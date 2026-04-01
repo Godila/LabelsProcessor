@@ -1,9 +1,5 @@
 version: "3.9"
 
-networks:
-  app:
-    driver: bridge
-
 services:
   backend:
     build: ./backend
@@ -13,8 +9,6 @@ services:
       - YANDEX_FOLDER_ID=${YANDEX_FOLDER_ID}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
       - GEMINI_MODEL=${GEMINI_MODEL:-google/gemini-3-flash-preview}
-    networks:
-      - app
     expose:
       - "8000"
     healthcheck:
@@ -27,8 +21,7 @@ services:
   frontend:
     build: ./frontend
     restart: unless-stopped
-    networks:
-      - app
+    network_mode: "service:backend"
     expose:
       - "80"
     depends_on:
