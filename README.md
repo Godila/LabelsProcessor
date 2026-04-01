@@ -109,13 +109,23 @@ pytest tests/test_pipeline_integration.py -v --run-integration
 
 ## Деплой на Dokploy
 
+Routing настраивается через Traefik labels прямо в `docker-compose.yml` — никаких ручных настроек доменов в UI не нужно.
+
 1. GitHub → подключить репо `Godila/LabelsProcessor`
 2. **New Service → Compose** → branch `master`, path `docker-compose.yml`
-3. Вставить переменные из `.env` в Environment
-4. **Deploy**
-5. **Domains**:
-   - frontend → `ваш-домен.com`, path `/`, HTTPS + Let's Encrypt
-   - backend → `ваш-домен.com`, path `/api`, **stripPath ON**, HTTPS
+3. Вставить переменные из `.env` в **Environment** раздел Compose-приложения:
+   ```
+   YANDEX_OAUTH_TOKEN=...
+   YANDEX_FOLDER_ID=...
+   OPENROUTER_API_KEY=...
+   GEMINI_MODEL=google/gemini-3-flash-preview
+   ```
+4. В `docker-compose.yml` заменить домен `x5ocr.haragy.top` на свой
+5. **Deploy** — Traefik подхватит labels автоматически:
+   - `ваш-домен.com/api/*` → backend:8000
+   - `ваш-домен.com/*` → frontend:80
+
+> Оба сервиса подключены к `dokploy-network` (внешняя сеть Dokploy/Traefik).
 
 ## Структура проекта
 
