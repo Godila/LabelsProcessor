@@ -14,7 +14,11 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting up — refreshing IAM token")
-    await iam_manager.start_background_refresh()
+    try:
+        await iam_manager.start_background_refresh()
+        logger.info("IAM token ready")
+    except Exception as e:
+        logger.error("IAM token refresh failed at startup (will retry on first request): %s", e)
     yield
     logger.info("Shutting down")
 
