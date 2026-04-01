@@ -7,6 +7,9 @@ services:
     env_file: .env
     expose:
       - "8000"
+    labels:
+      - "traefik.http.middlewares.upload-limit.buffering.maxRequestBodyBytes=20971520"
+      - "traefik.http.middlewares.upload-limit.buffering.memRequestBodyBytes=20971520"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
       interval: 30s
