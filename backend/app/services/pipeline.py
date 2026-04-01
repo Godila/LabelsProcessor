@@ -1,5 +1,7 @@
 import base64
+import json
 import logging
+from typing import AsyncGenerator
 
 from app.models.response import (
     AnalysisResult,
@@ -26,7 +28,8 @@ class LabelPipeline:
         self.ocr = ocr
         self.gemini = gemini
 
-    async def run(self, file_bytes: bytes, mime: str) -> AnalysisResult:
+    async def run(self, file_bytes: bytes, mime: str,
+                  settings: dict | None = None) -> AnalysisResult:
         # 1. PDF → JPEG
         if mime == PDF_MIME or mime == "application/octet-stream":
             logger.info("Converting PDF to JPEG")
@@ -46,13 +49,45 @@ class LabelPipeline:
         logger.info("OCR done: %d lines, avg_conf=%.3f", len(ocr_result.lines), ocr_result.avg_confidence)
 
         # 5. Gemini analysis (original bytes — no 4MB limit)
-        gemini_result = await self.gemini.analyze(file_bytes, mime, ocr_result.full_text)
+        gemini_result = await self.gemini.analyze(file_bytes, mime, ocr_result.full_text, settings)
         logger.info("Gemini done: category=%s, violations=%d",
                     gemini_result.get("category_detected"),
                     len(gemini_result.get("violations", [])))
 
         # 6. Merge into AnalysisResult
         return self._merge(ocr_result, orig_width, orig_height, gemini_result)
+
+    async def run_streaming(
+        self, file_bytes: bytes, mime: str, settings: dict | None = None
+    ) -> AsyncGenerator[dict, None]:
+        # Step 1: file prepare (PDF convert + resize)
+        yield {"step": "file_prepare", "label": "Подготовка файла", "progress": 15}
+
+        if mime == PDF_MIME or mime == "application/octet-stream":
+            logger.info("Converting PDF to JPEG")
+            file_bytes = pdf_to_jpeg(file_bytes)
+            mime = JPEG_MIME
+
+        orig_width, orig_height = get_image_dimensions(file_bytes)
+        b64_for_ocr, ocr_mime = prepare_image_for_ocr(file_bytes, mime)
+        logger.info("Image prepared for OCR (mime=%s)", ocr_mime)
+
+        # Step 2: Yandex OCR
+        yield {"step": "yandex_ocr", "label": "OCR — Yandex Vision", "progress": 45}
+        ocr_result = await self.ocr.analyze(b64_for_ocr, ocr_mime)
+        logger.info("OCR done: %d lines", len(ocr_result.lines))
+
+        # Step 3: Gemini analysis
+        yield {"step": "gemini_analyze", "label": "AI — анализ регламентов", "progress": 85}
+        gemini_result = await self.gemini.analyze(file_bytes, mime, ocr_result.full_text, settings)
+        logger.info("Gemini done: violations=%d", len(gemini_result.get("violations", [])))
+
+        # Step 4: Merge
+        yield {"step": "merge", "label": "Формирование результата", "progress": 98}
+        result = self._merge(ocr_result, orig_width, orig_height, gemini_result)
+
+        yield {"step": "done", "label": "Готово", "progress": 100,
+               "result": result.model_dump()}
 
     # ------------------------------------------------------------------
     def _merge(self, ocr_result, width, height, g: dict) -> AnalysisResult:

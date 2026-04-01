@@ -1,17 +1,22 @@
+import { useState } from 'react'
 import { useAnalysis } from './hooks/useAnalysis'
+import { useSettings } from './hooks/useSettings'
 import { useBboxHighlight } from './hooks/useBboxHighlight'
 import { UploadZone } from './components/UploadZone'
 import { ProgressOverlay } from './components/ProgressOverlay'
 import { ImageViewer } from './components/ImageViewer'
 import { FieldsPanel } from './components/FieldsPanel'
 import { ViolationsBlock } from './components/ViolationsBlock'
+import { SettingsPanel } from './components/SettingsPanel'
 
 export default function App() {
   const { state, run, reset } = useAnalysis()
+  const { settings, update: updateSettings, reset: resetSettings } = useSettings()
   const { activeField, setActiveField } = useBboxHighlight()
+  const [showSettings, setShowSettings] = useState(false)
 
-  const { step, result, imageUrl, error } = state
-  const busy = step === 'uploading' || step === 'ocr' || step === 'ai'
+  const { step, progress, stepLabel, result, imageUrl, error } = state
+  const busy = step !== 'idle' && step !== 'done' && step !== 'error'
 
   const blockCount = result?.violations.filter(v => v.severity === 'block').length ?? 0
   const warnCount = result?.violations.filter(v => v.severity === 'warning').length ?? 0
@@ -33,34 +38,56 @@ export default function App() {
             {result.category_detected}
           </span>
         )}
-        {result?.confidence && (
-          <span style={{
-            fontSize: 13, background: 'rgba(255,255,255,0.2)',
-            borderRadius: 20, padding: '3px 12px', marginLeft: 'auto',
-          }}>
-            AI: {Math.round(result.confidence.overall * 100)}%
-          </span>
-        )}
-        {result && (
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+          {result?.confidence && (
+            <span style={{
+              fontSize: 13, background: 'rgba(255,255,255,0.2)',
+              borderRadius: 20, padding: '3px 12px',
+            }}>
+              AI: {Math.round(result.confidence.overall * 100)}%
+            </span>
+          )}
+          {result && (
+            <button
+              onClick={reset}
+              style={{
+                background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff',
+                borderRadius: 8, padding: '6px 14px', cursor: 'pointer', fontSize: 13,
+              }}
+            >
+              Новый анализ
+            </button>
+          )}
           <button
-            onClick={reset}
+            onClick={() => setShowSettings(true)}
+            disabled={busy}
+            title="Настройки проверки"
             style={{
               background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff',
-              borderRadius: 8, padding: '6px 14px', cursor: 'pointer', fontSize: 13,
-              marginLeft: result.confidence ? 8 : 'auto',
+              borderRadius: 8, padding: '6px 10px', cursor: busy ? 'default' : 'pointer',
+              fontSize: 16, opacity: busy ? 0.5 : 1,
             }}
           >
-            Новый анализ
+            ⚙️
           </button>
-        )}
+        </div>
       </div>
 
-      <ProgressOverlay step={busy ? step : 'idle'} />
+      <ProgressOverlay step={step} progress={progress} stepLabel={stepLabel} />
+
+      {showSettings && (
+        <SettingsPanel
+          settings={settings}
+          onUpdate={patch => { updateSettings(patch) }}
+          onReset={resetSettings}
+          onClose={() => setShowSettings(false)}
+        />
+      )}
 
       <div style={{ padding: 24 }}>
         {step === 'idle' && (
           <div style={{ maxWidth: 600, margin: '60px auto' }}>
-            <UploadZone onFile={run} disabled={busy} />
+            <UploadZone onFile={file => run(file, settings)} disabled={busy} />
           </div>
         )}
 
@@ -89,9 +116,7 @@ export default function App() {
 
             {/* Violation summary bar */}
             {(blockCount > 0 || warnCount > 0) && (
-              <div style={{
-                display: 'flex', gap: 12, marginBottom: 16,
-              }}>
+              <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
                 {blockCount > 0 && (
                   <div style={{
                     padding: '8px 16px', background: '#fee2e2', borderRadius: 8,

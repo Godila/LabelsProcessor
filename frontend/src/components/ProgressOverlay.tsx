@@ -2,34 +2,53 @@ import type { AnalysisStep } from '../hooks/useAnalysis'
 
 interface Props {
   step: AnalysisStep
+  progress: number
+  stepLabel: string
 }
 
-const STEPS: { key: AnalysisStep; label: string }[] = [
-  { key: 'uploading', label: 'Загрузка файла' },
-  { key: 'ocr', label: 'OCR — распознавание текста' },
-  { key: 'ai', label: 'AI — анализ и проверка' },
-  { key: 'done', label: 'Готово' },
+interface StepDef {
+  key: AnalysisStep
+  label: string
+  icon: string
+}
+
+const STEPS: StepDef[] = [
+  { key: 'file_prepare',   label: 'Подготовка файла',        icon: '📄' },
+  { key: 'yandex_ocr',     label: 'OCR — Yandex Vision',     icon: '🔍' },
+  { key: 'gemini_analyze', label: 'AI — анализ регламентов', icon: '🤖' },
+  { key: 'merge',          label: 'Формирование результата', icon: '✅' },
 ]
 
-const ORDER: AnalysisStep[] = ['uploading', 'ocr', 'ai', 'done']
+const ORDER: AnalysisStep[] = ['file_prepare', 'yandex_ocr', 'gemini_analyze', 'merge', 'done']
 
-export function ProgressOverlay({ step }: Props) {
-  if (step === 'idle') return null
+export function ProgressOverlay({ step, progress, stepLabel }: Props) {
+  if (step === 'idle' || step === 'done' || step === 'error') return null
 
   const currentIdx = ORDER.indexOf(step)
 
   return (
     <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.50)',
       display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100,
     }}>
       <div style={{
         background: '#fff', borderRadius: 16, padding: '32px 48px',
-        minWidth: 320, boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+        minWidth: 360, boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
       }}>
-        <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 24, color: '#333' }}>
+        <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, color: '#333' }}>
           Анализ этикетки...
         </div>
+
+        {/* Overall progress bar */}
+        <div style={{
+          height: 6, background: '#eee', borderRadius: 4, marginBottom: 24, overflow: 'hidden',
+        }}>
+          <div style={{
+            height: '100%', background: '#e63329', borderRadius: 4,
+            width: `${progress}%`, transition: 'width 0.4s ease',
+          }} />
+        </div>
+
         {STEPS.map((s, i) => {
           const done = currentIdx > i
           const active = currentIdx === i
@@ -39,15 +58,25 @@ export function ProgressOverlay({ step }: Props) {
               marginBottom: 14, opacity: done || active ? 1 : 0.35,
             }}>
               <div style={{
-                width: 28, height: 28, borderRadius: '50%',
+                width: 32, height: 32, borderRadius: '50%',
                 background: done ? '#28a745' : active ? '#e63329' : '#ddd',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 14, color: '#fff', flexShrink: 0,
                 transition: 'background 0.3s',
               }}>
-                {done ? '✓' : active ? <Spinner /> : i + 1}
+                {done ? '✓' : active ? <Spinner /> : s.icon}
               </div>
-              <span style={{ fontSize: 14, color: '#333' }}>{s.label}</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14, color: '#333', fontWeight: active ? 600 : 400 }}>
+                  {s.label}
+                </div>
+                {active && stepLabel && stepLabel !== s.label && (
+                  <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>{stepLabel}</div>
+                )}
+              </div>
+              {done && (
+                <div style={{ fontSize: 12, color: '#28a745', fontWeight: 600 }}>Готово</div>
+              )}
             </div>
           )
         })}

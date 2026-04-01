@@ -1,11 +1,21 @@
 import { useState } from 'react'
-import { analyzeLabel } from '../api/client'
+import { analyzeLabelStream } from '../api/client'
 import type { AnalysisResult } from '../types/analysis'
+import type { CheckSettings } from '../types/settings'
 
-export type AnalysisStep = 'idle' | 'uploading' | 'ocr' | 'ai' | 'done' | 'error'
+export type AnalysisStep =
+  | 'idle'
+  | 'file_prepare'
+  | 'yandex_ocr'
+  | 'gemini_analyze'
+  | 'merge'
+  | 'done'
+  | 'error'
 
 export interface AnalysisState {
   step: AnalysisStep
+  progress: number
+  stepLabel: string
   result: AnalysisResult | null
   imageUrl: string | null
   error: string | null
@@ -14,26 +24,46 @@ export interface AnalysisState {
 export function useAnalysis() {
   const [state, setState] = useState<AnalysisState>({
     step: 'idle',
+    progress: 0,
+    stepLabel: '',
     result: null,
     imageUrl: null,
     error: null,
   })
 
-  async function run(file: File) {
-    // Revoke previous object URL
+  async function run(file: File, settings: CheckSettings | null = null) {
     if (state.imageUrl) URL.revokeObjectURL(state.imageUrl)
 
     const imageUrl = URL.createObjectURL(file)
-    setState({ step: 'uploading', result: null, imageUrl, error: null })
+    setState({
+      step: 'file_prepare',
+      progress: 0,
+      stepLabel: 'Подготовка файла',
+      result: null,
+      imageUrl,
+      error: null,
+    })
 
     try {
-      // Simulate step progression for UX feedback
-      setState(s => ({ ...s, step: 'ocr' }))
-      const result = await analyzeLabel(file)
-      setState(s => ({ ...s, step: 'ai' }))
-      // Small delay so user sees the "AI analysis" step
-      await new Promise(r => setTimeout(r, 300))
-      setState({ step: 'done', result, imageUrl, error: null })
+      const result = await analyzeLabelStream(file, settings, (event) => {
+        if (event.step !== 'done' && event.step !== 'error') {
+          setState(s => ({
+            ...s,
+            step: event.step as AnalysisStep,
+            progress: event.progress,
+            stepLabel: event.label,
+          }))
+        }
+      })
+
+      setState({
+        step: 'done',
+        progress: 100,
+        stepLabel: 'Готово',
+        result,
+        imageUrl,
+        error: null,
+      })
     } catch (e) {
       setState(s => ({
         ...s,
@@ -45,7 +75,7 @@ export function useAnalysis() {
 
   function reset() {
     if (state.imageUrl) URL.revokeObjectURL(state.imageUrl)
-    setState({ step: 'idle', result: null, imageUrl: null, error: null })
+    setState({ step: 'idle', progress: 0, stepLabel: '', result: null, imageUrl: null, error: null })
   }
 
   return { state, run, reset }
