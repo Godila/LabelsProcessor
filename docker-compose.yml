@@ -1,5 +1,9 @@
 version: "3.9"
 
+networks:
+  app:
+    driver: bridge
+
 services:
   backend:
     build: ./backend
@@ -9,11 +13,10 @@ services:
       - YANDEX_FOLDER_ID=${YANDEX_FOLDER_ID}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
       - GEMINI_MODEL=${GEMINI_MODEL:-google/gemini-3-flash-preview}
+    networks:
+      - app
     expose:
       - "8000"
-    labels:
-      - "traefik.http.middlewares.upload-limit.buffering.maxRequestBodyBytes=20971520"
-      - "traefik.http.middlewares.upload-limit.buffering.memRequestBodyBytes=20971520"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
       interval: 30s
@@ -24,6 +27,8 @@ services:
   frontend:
     build: ./frontend
     restart: unless-stopped
+    networks:
+      - app
     expose:
       - "80"
     depends_on:
