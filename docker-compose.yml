@@ -4,7 +4,11 @@ services:
   backend:
     build: ./backend
     restart: unless-stopped
-    env_file: .env
+    environment:
+      - YANDEX_OAUTH_TOKEN=${YANDEX_OAUTH_TOKEN}
+      - YANDEX_FOLDER_ID=${YANDEX_FOLDER_ID}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - GEMINI_MODEL=${GEMINI_MODEL:-google/gemini-3-flash-preview}
     expose:
       - "8000"
     labels:
