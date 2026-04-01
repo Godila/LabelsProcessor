@@ -21,7 +21,6 @@ services:
   frontend:
     build: ./frontend
     restart: unless-stopped
-    network_mode: "service:backend"
     expose:
       - "80"
     depends_on:
