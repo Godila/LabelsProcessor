@@ -1,5 +1,9 @@
 version: "3.9"
 
+networks:
+  dokploy-network:
+    external: true
+
 services:
   backend:
     build: ./backend
@@ -9,8 +13,16 @@ services:
       - YANDEX_FOLDER_ID=${YANDEX_FOLDER_ID}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
       - GEMINI_MODEL=${GEMINI_MODEL:-google/gemini-3-flash-preview}
+    networks:
+      - dokploy-network
     expose:
       - "8000"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.x5ocr-backend.rule=Host(`x5ocr.haragy.top`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.x5ocr-backend.entrypoints=websecure"
+      - "traefik.http.routers.x5ocr-backend.tls.certResolver=letsencrypt"
+      - "traefik.http.services.x5ocr-backend.loadbalancer.server.port=8000"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
       interval: 30s
@@ -21,7 +33,15 @@ services:
   frontend:
     build: ./frontend
     restart: unless-stopped
+    networks:
+      - dokploy-network
     expose:
       - "80"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.x5ocr-frontend.rule=Host(`x5ocr.haragy.top`)"
+      - "traefik.http.routers.x5ocr-frontend.entrypoints=websecure"
+      - "traefik.http.routers.x5ocr-frontend.tls.certResolver=letsencrypt"
+      - "traefik.http.services.x5ocr-frontend.loadbalancer.server.port=80"
     depends_on:
       - backend
