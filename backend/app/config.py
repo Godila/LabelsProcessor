@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     max_file_size_bytes: int = 20 * 1024 * 1024
     yandex_max_bytes: int = 3_950_000
     iam_refresh_interval_seconds: int = 40000
+    # OCR provider: "yandex" | "nemotron"
+    ocr_provider: str = "yandex"
+    nemotron_ocr_url: str = ""
 
     model_config = SettingsConfigDict(
         env_file=".env",
