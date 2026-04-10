@@ -13,6 +13,8 @@ services:
       - YANDEX_FOLDER_ID=${YANDEX_FOLDER_ID}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
       - GEMINI_MODEL=${GEMINI_MODEL:-google/gemini-3-flash-preview}
+      - OCR_PROVIDER=${OCR_PROVIDER:-yandex}
+      - NEMOTRON_OCR_URL=${NEMOTRON_OCR_URL:-}
     networks:
       - dokploy-network
     expose:
