@@ -24,6 +24,23 @@ export interface OcrCompareResult {
   nemotron: OcrProviderResult
 }
 
+export interface PipelineCompareResult {
+  yandex: { ok: boolean; result?: Record<string, unknown>; error?: string }
+  nemotron: { ok: boolean; result?: Record<string, unknown>; error?: string }
+}
+
+export async function comparePipelinesFull(file: File, settings?: CheckSettings | null): Promise<PipelineCompareResult> {
+  const form = new FormData()
+  form.append('file', file)
+  if (settings) form.append('settings', JSON.stringify(settings))
+  const resp = await fetch(`${BASE}/analyze/pipeline-compare`, { method: 'POST', body: form })
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => resp.statusText)
+    throw new Error(`API error ${resp.status}: ${text}`)
+  }
+  return resp.json() as Promise<PipelineCompareResult>
+}
+
 export async function compareOcr(file: File): Promise<OcrCompareResult> {
   const form = new FormData()
   form.append('file', file)
