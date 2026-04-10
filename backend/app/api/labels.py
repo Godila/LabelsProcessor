@@ -22,20 +22,21 @@ ALLOWED_MIME = {
 
 
 def _get_pipeline(parsed_settings: dict | None) -> LabelPipeline:
-    """Return pipeline with OCR provider overridden per-request if requested."""
+    """Return pipeline, optionally overriding OCR provider per-request."""
     provider = (parsed_settings or {}).get("ocr_provider", "")
-    # use default if not set OR already matches server config
+    # no override, or same as server default → use pre-built pipeline
     if not provider or provider == app_settings.ocr_provider:
         return pipeline
-    if provider == "nemotron":
-        if not app_settings.nemotron_ocr_url:
-            raise HTTPException(status_code=400, detail="NEMOTRON_OCR_URL не задан на сервере")
+    if provider == "nemotron" and app_settings.nemotron_ocr_url:
         from app.services.nemotron_ocr import NemotronOCRService
         ocr = NemotronOCRService(base_url=app_settings.nemotron_ocr_url)
-    else:  # yandex
+        return LabelPipeline(ocr=ocr, gemini=gemini_service)
+    if provider == "yandex":
         from app.services.yandex_ocr import YandexOCRService
         ocr = YandexOCRService(folder_id=app_settings.yandex_folder_id, token_manager=iam_manager)
-    return LabelPipeline(ocr=ocr, gemini=gemini_service)
+        return LabelPipeline(ocr=ocr, gemini=gemini_service)
+    # fallback — never raise, just use server default
+    return pipeline
 
 
 def _parse_settings(settings_json: str | None) -> dict | None:
