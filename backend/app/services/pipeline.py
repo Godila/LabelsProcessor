@@ -13,7 +13,7 @@ from app.models.response import (
     Violation,
 )
 from app.services.gemini_analyzer import GeminiAnalyzerService
-from app.services.image_processor import get_image_dimensions, prepare_image_for_ocr
+from app.services.image_processor import get_image_dimensions, prepare_image_for_ocr, preprocess_for_ocr
 from app.utils.pdf_utils import pdf_to_jpeg
 
 logger = logging.getLogger(__name__)
@@ -39,16 +39,19 @@ class LabelPipeline:
         orig_width, orig_height = get_image_dimensions(file_bytes)
         logger.info("Image dimensions: %dx%d", orig_width, orig_height)
 
-        # 3. Resize for Yandex (≤3.95 MB)
-        b64_for_ocr, ocr_mime = prepare_image_for_ocr(file_bytes, mime)
+        # 3. OpenCV preprocessing: EXIF fix + CLAHE + denoise
+        processed_bytes = preprocess_for_ocr(file_bytes)
+
+        # 4. Resize for Yandex (≤3.95 MB)
+        b64_for_ocr, ocr_mime = prepare_image_for_ocr(processed_bytes, mime)
         logger.info("Image prepared for OCR (mime=%s, b64_len=%d)", ocr_mime, len(b64_for_ocr))
 
-        # 4. Yandex OCR
+        # 5. OCR
         ocr_result = await self.ocr.analyze(b64_for_ocr, ocr_mime)
         logger.info("OCR done: %d lines, avg_conf=%.3f", len(ocr_result.lines), ocr_result.avg_confidence)
 
-        # 5. Gemini analysis (original bytes — no 4MB limit)
-        gemini_result = await self.gemini.analyze(file_bytes, mime, ocr_result.full_text, settings)
+        # 6. Gemini analysis (processed bytes for better visual quality)
+        gemini_result = await self.gemini.analyze(processed_bytes, mime, ocr_result.full_text, settings)
         logger.info("Gemini done: category=%s, violations=%d",
                     gemini_result.get("category_detected"),
                     len(gemini_result.get("violations", [])))
