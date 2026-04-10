@@ -129,7 +129,7 @@ async def compare_ocr_providers(
             return {"error": "NEMOTRON_OCR_URL не задан"}
         try:
             svc = NemotronOCRService(base_url=app_settings.nemotron_ocr_url)
-            ml = merge_level if merge_level in ("word", "sentence", "paragraph") else "paragraph"
+            ml = merge_level if merge_level in ("layout", "word", "sentence", "paragraph") else "paragraph"
             r = await svc.analyze(b64, mime, merge_level=ml)
             return {"full_text": r.full_text, "lines": [{"text": l.text, "confidence": l.confidence} for l in r.lines], "avg_confidence": r.avg_confidence, "line_count": len(r.lines)}
         except Exception as e:

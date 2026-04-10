@@ -119,7 +119,7 @@ export function OcrCompareModal({ onClose }: Props) {
           {mode === 'ocr' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>
               <span style={{ fontSize: 12, color: '#666' }}>Nemotron merge:</span>
-              {(['word', 'sentence', 'paragraph'] as const).map(ml => (
+              {(['layout', 'word', 'sentence', 'paragraph'] as const).map(ml => (
                 <button key={ml} onClick={() => setMergeLevel(ml)} style={{
                   padding: '3px 10px', borderRadius: 6, border: 'none', cursor: 'pointer',
                   fontSize: 12, fontWeight: mergeLevel === ml ? 700 : 400,
