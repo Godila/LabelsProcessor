@@ -23,7 +23,7 @@ PDF_MIME = "application/pdf"
 
 
 class LabelPipeline:
-    def __init__(self, ocr: YandexOCRService, gemini: GeminiAnalyzerService):
+    def __init__(self, ocr, gemini: GeminiAnalyzerService):
         self.ocr = ocr
         self.gemini = gemini
 
