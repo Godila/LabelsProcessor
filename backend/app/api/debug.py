@@ -8,6 +8,20 @@ from app.services.image_processor import preprocess_for_ocr, crop_label_region
 router = APIRouter()
 
 
+@router.get("/debug/preprocess", response_class=HTMLResponse)
+async def debug_preprocess_form():
+    return HTMLResponse("""<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Preprocess Test</title>
+<style>body{font-family:Arial;background:#1a1a1a;color:#eee;padding:40px;text-align:center}
+input,button{margin:10px;padding:10px 20px;border-radius:8px;border:none;font-size:14px}
+button{background:#e63329;color:#fff;cursor:pointer}</style></head>
+<body><h2>🔬 Тест препроцессинга</h2>
+<form method="POST" enctype="multipart/form-data">
+  <input type="file" name="file" accept="image/*,.pdf" required><br>
+  <button type="submit">Обработать</button>
+</form></body></html>""")
+
+
 @router.post("/debug/preprocess", response_class=HTMLResponse)
 async def debug_preprocess(file: UploadFile):
     """Returns side-by-side HTML with original vs preprocessed image."""
