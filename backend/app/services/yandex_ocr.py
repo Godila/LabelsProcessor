@@ -11,6 +11,8 @@ YANDEX_OCR_URL = "https://vision.api.cloud.yandex.net/vision/v1/batchAnalyze"
 
 
 class YandexOCRService:
+    ocr_label = "OCR — Yandex Vision"
+
     def __init__(self, folder_id: str, token_manager: IAMTokenManager):
         self.folder_id = folder_id
         self.token_manager = token_manager

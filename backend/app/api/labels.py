@@ -4,9 +4,10 @@ import logging
 from fastapi import APIRouter, Form, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 
-from app.config import settings
-from app.dependencies import pipeline
+from app.config import settings as app_settings
+from app.dependencies import gemini_service, iam_manager, ocr_service, pipeline
 from app.models.response import AnalysisResult
+from app.services.pipeline import LabelPipeline
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +19,22 @@ ALLOWED_MIME = {
     "image/webp",
     "application/pdf",
 }
+
+
+def _get_pipeline(parsed_settings: dict | None) -> LabelPipeline:
+    """Return pipeline with OCR provider overridden per-request if requested."""
+    provider = (parsed_settings or {}).get("ocr_provider", "")
+    if not provider:
+        return pipeline
+    if provider == "nemotron":
+        if not app_settings.nemotron_ocr_url:
+            raise HTTPException(status_code=400, detail="NEMOTRON_OCR_URL не задан на сервере")
+        from app.services.nemotron_ocr import NemotronOCRService
+        ocr = NemotronOCRService(base_url=app_settings.nemotron_ocr_url)
+    else:  # yandex
+        from app.services.yandex_ocr import YandexOCRService
+        ocr = YandexOCRService(folder_id=app_settings.yandex_folder_id, token_manager=iam_manager)
+    return LabelPipeline(ocr=ocr, gemini=gemini_service)
 
 
 def _parse_settings(settings_json: str | None) -> dict | None:
@@ -34,7 +51,7 @@ async def _read_and_validate(file: UploadFile) -> tuple[bytes, str]:
     if mime not in ALLOWED_MIME:
         raise HTTPException(status_code=415, detail=f"Unsupported file type: {mime}")
     data = await file.read()
-    if len(data) > settings.max_file_size_bytes:
+    if len(data) > app_settings.max_file_size_bytes:
         raise HTTPException(
             status_code=413,
             detail=f"File too large: {len(data)} bytes (max {settings.max_file_size_bytes})",
@@ -51,7 +68,7 @@ async def analyze_label(
     parsed_settings = _parse_settings(settings_json)
     logger.info("analyze: filename=%s mime=%s size=%d", file.filename, mime, len(data))
     try:
-        result = await pipeline.run(data, mime, parsed_settings)
+        result = await _get_pipeline(parsed_settings).run(data, mime, parsed_settings)
     except Exception as e:
         logger.exception("Pipeline error: %s", e)
         raise HTTPException(status_code=500, detail=str(e))
@@ -67,9 +84,11 @@ async def analyze_label_stream(
     parsed_settings = _parse_settings(settings_json)
     logger.info("analyze/stream: filename=%s mime=%s size=%d", file.filename, mime, len(data))
 
+    req_pipeline = _get_pipeline(parsed_settings)
+
     async def event_gen():
         try:
-            async for event in pipeline.run_streaming(data, mime, parsed_settings):
+            async for event in req_pipeline.run_streaming(data, mime, parsed_settings):
                 yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
         except Exception as e:
             logger.exception("Stream pipeline error: %s", e)

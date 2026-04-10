@@ -110,6 +110,38 @@ export function SettingsPanel({ settings, onUpdate, onReset, onClose }: Props) {
             </div>
           </Section>
 
+          {/* OCR provider */}
+          <Section title="Провайдер OCR">
+            <div style={{ display: 'flex', gap: 10 }}>
+              {([
+                { value: '', label: 'По умолчанию (сервер)' },
+                { value: 'nemotron', label: 'Nemotron v2' },
+                { value: 'yandex', label: 'Yandex Vision' },
+              ] as const).map(opt => (
+                <label key={opt.value} style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '6px 12px', borderRadius: 8,
+                  border: `1px solid ${draft.ocr_provider === opt.value ? '#e63329' : '#ddd'}`,
+                  background: draft.ocr_provider === opt.value ? '#fff5f5' : '#fafafa',
+                  cursor: 'pointer', fontSize: 13, userSelect: 'none',
+                }}>
+                  <input
+                    type="radio"
+                    name="ocr_provider"
+                    value={opt.value}
+                    checked={draft.ocr_provider === opt.value}
+                    onChange={() => setDraft(d => ({ ...d, ocr_provider: opt.value }))}
+                    style={{ accentColor: '#e63329' }}
+                  />
+                  {opt.label}
+                </label>
+              ))}
+            </div>
+            <div style={{ fontSize: 12, color: '#999', marginTop: 6 }}>
+              Nemotron v2 — рекомендуется (лучше для кириллицы). Yandex Vision — запасной вариант.
+            </div>
+          </Section>
+
           {/* Extra instructions */}
           <Section title="Дополнительные инструкции">
             <textarea

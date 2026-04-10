@@ -14,7 +14,6 @@ from app.models.response import (
 )
 from app.services.gemini_analyzer import GeminiAnalyzerService
 from app.services.image_processor import get_image_dimensions, prepare_image_for_ocr
-from app.services.yandex_ocr import YandexOCRService
 from app.utils.pdf_utils import pdf_to_jpeg
 
 logger = logging.getLogger(__name__)
@@ -72,8 +71,9 @@ class LabelPipeline:
         b64_for_ocr, ocr_mime = prepare_image_for_ocr(file_bytes, mime)
         logger.info("Image prepared for OCR (mime=%s)", ocr_mime)
 
-        # Step 2: Yandex OCR
-        yield {"step": "yandex_ocr", "label": "OCR — Yandex Vision", "progress": 45}
+        # Step 2: OCR
+        ocr_label = getattr(self.ocr, "ocr_label", "OCR")
+        yield {"step": "yandex_ocr", "label": ocr_label, "progress": 45}
         ocr_result = await self.ocr.analyze(b64_for_ocr, ocr_mime)
         logger.info("OCR done: %d lines", len(ocr_result.lines))
 

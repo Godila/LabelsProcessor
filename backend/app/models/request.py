@@ -16,3 +16,4 @@ class CheckSettings(BaseModel):
     check_children_warning: bool = True
     check_spelling: bool = True
     extra_instructions: str = ""
+    ocr_provider: str = ""  # "" = use server default, "yandex" | "nemotron" = override

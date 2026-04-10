@@ -10,6 +10,7 @@ export interface CheckSettings {
   check_children_warning: boolean
   check_spelling: boolean
   extra_instructions: string
+  ocr_provider: '' | 'yandex' | 'nemotron'
 }
 
 export const ALL_REGULATIONS = [
@@ -32,4 +33,5 @@ export const DEFAULT_SETTINGS: CheckSettings = {
   check_children_warning: true,
   check_spelling: true,
   extra_instructions: '',
+  ocr_provider: '',
 }
