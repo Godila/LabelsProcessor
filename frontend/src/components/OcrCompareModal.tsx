@@ -10,6 +10,7 @@ type Mode = 'ocr' | 'pipeline'
 
 export function OcrCompareModal({ onClose }: Props) {
   const [mode, setMode] = useState<Mode>('ocr')
+  const [mergeLevel, setMergeLevel] = useState<string>('paragraph')
   const [ocrResult, setOcrResult] = useState<OcrCompareResult | null>(null)
   const [pipelineResult, setPipelineResult] = useState<PipelineCompareResult | null>(null)
   const [loading, setLoading] = useState(false)
@@ -25,7 +26,7 @@ export function OcrCompareModal({ onClose }: Props) {
     setPipelineResult(null)
     try {
       if (mode === 'ocr') {
-        setOcrResult(await compareOcr(f))
+        setOcrResult(await compareOcr(f, mergeLevel))
       } else {
         setPipelineResult(await comparePipelinesFull(f))
       }
@@ -44,7 +45,7 @@ export function OcrCompareModal({ onClose }: Props) {
     setPipelineResult(null)
     try {
       if (mode === 'ocr') {
-        setOcrResult(await compareOcr(f))
+        setOcrResult(await compareOcr(f, mergeLevel))
       } else {
         setPipelineResult(await comparePipelinesFull(f))
       }
@@ -114,6 +115,19 @@ export function OcrCompareModal({ onClose }: Props) {
                 padding: '6px 14px', cursor: 'pointer', fontSize: 12, color: '#333',
               }}>🔄 Повторить</button>
             </>
+          )}
+          {mode === 'ocr' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>
+              <span style={{ fontSize: 12, color: '#666' }}>Nemotron merge:</span>
+              {(['word', 'sentence', 'paragraph'] as const).map(ml => (
+                <button key={ml} onClick={() => setMergeLevel(ml)} style={{
+                  padding: '3px 10px', borderRadius: 6, border: 'none', cursor: 'pointer',
+                  fontSize: 12, fontWeight: mergeLevel === ml ? 700 : 400,
+                  background: mergeLevel === ml ? '#76b900' : '#f0f0f0',
+                  color: mergeLevel === ml ? '#fff' : '#333',
+                }}>{ml}</button>
+              ))}
+            </div>
           )}
           {mode === 'pipeline' && (
             <span style={{ fontSize: 12, color: '#888', marginLeft: 'auto' }}>

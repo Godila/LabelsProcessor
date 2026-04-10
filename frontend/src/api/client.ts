@@ -41,9 +41,10 @@ export async function comparePipelinesFull(file: File, settings?: CheckSettings 
   return resp.json() as Promise<PipelineCompareResult>
 }
 
-export async function compareOcr(file: File): Promise<OcrCompareResult> {
+export async function compareOcr(file: File, mergeLevel?: string): Promise<OcrCompareResult> {
   const form = new FormData()
   form.append('file', file)
+  if (mergeLevel) form.append('merge_level', mergeLevel)
   const resp = await fetch(`${BASE}/analyze/ocr-compare`, { method: 'POST', body: form })
   if (!resp.ok) {
     const text = await resp.text().catch(() => resp.statusText)

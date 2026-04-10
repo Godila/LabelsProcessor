@@ -19,9 +19,9 @@ class NemotronOCRService:
         # base_url например: http://194.228.55.129:37479
         self.base_url = base_url.rstrip("/")
 
-    async def analyze(self, image_b64: str, mime: str) -> OCRResult:
+    async def analyze(self, image_b64: str, mime: str, merge_level: str = "paragraph") -> OCRResult:
         """Совместимый интерфейс с YandexOCRService."""
-        payload = {"image_b64": image_b64, "mime": mime}
+        payload = {"image_b64": image_b64, "mime": mime, "merge_level": merge_level}
 
         async with httpx.AsyncClient(timeout=120.0) as client:
             resp = await client.post(f"{self.base_url}/ocr", json=payload)

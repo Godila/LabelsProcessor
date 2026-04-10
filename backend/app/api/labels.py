@@ -100,7 +100,10 @@ async def compare_full_pipelines(
 
 
 @router.post("/analyze/ocr-compare")
-async def compare_ocr_providers(file: UploadFile):
+async def compare_ocr_providers(
+    file: UploadFile,
+    merge_level: str | None = Form(None),
+):
     """Run Yandex Vision and Nemotron in parallel, return both OCR results for comparison."""
     import asyncio
     import base64
@@ -126,7 +129,8 @@ async def compare_ocr_providers(file: UploadFile):
             return {"error": "NEMOTRON_OCR_URL не задан"}
         try:
             svc = NemotronOCRService(base_url=app_settings.nemotron_ocr_url)
-            r = await svc.analyze(b64, mime)
+            ml = merge_level if merge_level in ("word", "sentence", "paragraph") else "paragraph"
+            r = await svc.analyze(b64, mime, merge_level=ml)
             return {"full_text": r.full_text, "lines": [{"text": l.text, "confidence": l.confidence} for l in r.lines], "avg_confidence": r.avg_confidence, "line_count": len(r.lines)}
         except Exception as e:
             return {"error": str(e)}
