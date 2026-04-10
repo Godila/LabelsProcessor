@@ -13,7 +13,10 @@ from app.models.response import (
     Violation,
 )
 from app.services.gemini_analyzer import GeminiAnalyzerService
-from app.services.image_processor import get_image_dimensions, prepare_image_for_ocr, preprocess_for_ocr
+from app.services.image_processor import (
+    get_image_dimensions, prepare_image_for_ocr,
+    preprocess_for_ocr, crop_to_ocr_bboxes,
+)
 from app.utils.pdf_utils import pdf_to_jpeg
 
 logger = logging.getLogger(__name__)
@@ -50,8 +53,11 @@ class LabelPipeline:
         ocr_result = await self.ocr.analyze(b64_for_ocr, ocr_mime)
         logger.info("OCR done: %d lines, avg_conf=%.3f", len(ocr_result.lines), ocr_result.avg_confidence)
 
-        # 6. Gemini analysis (processed bytes for better visual quality)
-        gemini_result = await self.gemini.analyze(processed_bytes, mime, ocr_result.full_text, settings)
+        # 6. Smart crop: use OCR bbox union to focus Gemini on label area
+        gemini_bytes = crop_to_ocr_bboxes(processed_bytes, ocr_result.lines)
+
+        # 7. Gemini analysis on cropped image
+        gemini_result = await self.gemini.analyze(gemini_bytes, mime, ocr_result.full_text, settings)
         logger.info("Gemini done: category=%s, violations=%d",
                     gemini_result.get("category_detected"),
                     len(gemini_result.get("violations", [])))

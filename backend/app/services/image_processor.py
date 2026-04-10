@@ -63,6 +63,70 @@ def preprocess_for_ocr(image_bytes: bytes) -> bytes:
         return image_bytes
 
 
+# ── Smart crop via OCR bboxes (universal) ────────────────────────────────────
+
+def crop_to_ocr_bboxes(image_bytes: bytes, lines: list, padding: float = 0.03) -> bytes:
+    """
+    Crop image to the union of all OCR bounding boxes.
+    Works for any label type — uses what OCR already found.
+    lines: list of OCRLine (with .bbox = [BBoxVertex(x,y), ...])
+    padding: extra margin as fraction of image size.
+    Falls back to original if no valid bboxes.
+    """
+    try:
+        img = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
+        if img is None:
+            return image_bytes
+
+        h, w = img.shape[:2]
+
+        # Collect all bbox points
+        all_x, all_y = [], []
+        for line in lines:
+            if not line.bbox:
+                continue
+            for v in line.bbox:
+                all_x.append(v.x)
+                all_y.append(v.y)
+
+        if not all_x:
+            logger.info("BBox crop: no bboxes available, skipping")
+            return image_bytes
+
+        # Union bounding box
+        x_min, x_max = min(all_x), max(all_x)
+        y_min, y_max = min(all_y), max(all_y)
+
+        # Skip if union covers almost full image
+        union_area = (x_max - x_min) * (y_max - y_min)
+        if union_area > 0.90 * w * h:
+            logger.info("BBox crop: text covers full image, skipping")
+            return image_bytes
+
+        # Add padding
+        pad_x = int(w * padding)
+        pad_y = int(h * padding)
+        x1 = max(0, x_min - pad_x)
+        y1 = max(0, y_min - pad_y)
+        x2 = min(w, x_max + pad_x)
+        y2 = min(h, y_max + pad_y)
+
+        cropped = img[y1:y2, x1:x2]
+        success, buf = cv2.imencode(".jpg", cropped, [cv2.IMWRITE_JPEG_QUALITY, 93])
+        if not success:
+            return image_bytes
+
+        result = buf.tobytes()
+        logger.info("BBox crop: %dx%d → %dx%d (%.0f%% of image)",
+                    w, h, x2 - x1, y2 - y1,
+                    100 * (x2 - x1) * (y2 - y1) / (w * h))
+        return result
+
+    except Exception as e:
+        logger.warning("BBox crop failed (%s), returning original", e)
+        return image_bytes
+
+
 # ── Level-2 preprocessing (optional, label crop) ────────────────────────────
 
 def crop_label_region(image_bytes: bytes, margin: float = 0.03) -> bytes:

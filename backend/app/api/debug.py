@@ -4,6 +4,8 @@ from fastapi import APIRouter, UploadFile
 from fastapi.responses import HTMLResponse
 
 from app.services.image_processor import preprocess_for_ocr, crop_label_region
+from app.dependencies import ocr_service
+import base64 as _b64
 
 router = APIRouter()
 
@@ -27,17 +29,31 @@ async def debug_preprocess(file: UploadFile):
     """Returns side-by-side HTML with original vs preprocessed image."""
     data = await file.read()
 
+    from app.services.image_processor import crop_to_ocr_bboxes
+
+    mime = file.content_type or "image/jpeg"
     enhanced = preprocess_for_ocr(data)
-    cropped = crop_label_region(enhanced)
+
+    # Run OCR to get real bboxes
+    b64img = base64.b64encode(enhanced).decode()
+    try:
+        ocr_result = await ocr_service.analyze(b64img, mime)
+        bbox_cropped = crop_to_ocr_bboxes(enhanced, ocr_result.lines)
+        ocr_lines = len(ocr_result.lines)
+        ocr_conf = f"{ocr_result.avg_confidence * 100:.1f}%"
+    except Exception as e:
+        bbox_cropped = enhanced
+        ocr_lines = 0
+        ocr_conf = f"err: {e}"
 
     orig_b64 = base64.b64encode(data).decode()
     enhanced_b64 = base64.b64encode(enhanced).decode()
-    cropped_b64 = base64.b64encode(cropped).decode()
-
-    mime = file.content_type or "image/jpeg"
+    cropped_b64 = base64.b64encode(bbox_cropped).decode()
 
     def size_kb(b: bytes) -> str:
         return f"{len(b) / 1024:.1f} KB"
+
+    cropped_flag = '✅ обрезано' if len(bbox_cropped) < len(enhanced) * 0.92 else '⚠️ crop не сработал'
 
     html = f"""<!DOCTYPE html>
 <html>
@@ -63,13 +79,13 @@ async def debug_preprocess(file: UploadFile):
       <img src="data:{mime};base64,{orig_b64}">
     </div>
     <div class="card">
-      <div class="label">2. CLAHE + Denoise</div>
-      <div class="meta">{size_kb(enhanced)} · {'%.0f' % (100 * len(enhanced) / len(data))}% от оригинала</div>
+      <div class="label">2. CLAHE + Denoise → OCR</div>
+      <div class="meta">{size_kb(enhanced)} · {ocr_lines} строк · conf {ocr_conf}</div>
       <img src="data:image/jpeg;base64,{enhanced_b64}">
     </div>
     <div class="card">
-      <div class="label">3. + Crop к тексту</div>
-      <div class="meta">{size_kb(cropped)} {'✅ обрезано' if len(cropped) < len(enhanced) * 0.95 else '⚠️ crop не сработал'}</div>
+      <div class="label">3. Crop по OCR bbox → Gemini</div>
+      <div class="meta">{size_kb(bbox_cropped)} {cropped_flag}</div>
       <img src="data:image/jpeg;base64,{cropped_b64}">
     </div>
   </div>
