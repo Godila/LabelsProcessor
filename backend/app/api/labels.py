@@ -24,7 +24,8 @@ ALLOWED_MIME = {
 def _get_pipeline(parsed_settings: dict | None) -> LabelPipeline:
     """Return pipeline with OCR provider overridden per-request if requested."""
     provider = (parsed_settings or {}).get("ocr_provider", "")
-    if not provider:
+    # use default if not set OR already matches server config
+    if not provider or provider == app_settings.ocr_provider:
         return pipeline
     if provider == "nemotron":
         if not app_settings.nemotron_ocr_url:
