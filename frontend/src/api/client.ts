@@ -11,6 +11,30 @@ export interface StreamEvent {
   message?: string
 }
 
+export interface OcrProviderResult {
+  full_text?: string
+  lines?: { text: string; confidence: number }[]
+  avg_confidence?: number
+  line_count?: number
+  error?: string
+}
+
+export interface OcrCompareResult {
+  yandex: OcrProviderResult
+  nemotron: OcrProviderResult
+}
+
+export async function compareOcr(file: File): Promise<OcrCompareResult> {
+  const form = new FormData()
+  form.append('file', file)
+  const resp = await fetch(`${BASE}/analyze/ocr-compare`, { method: 'POST', body: form })
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => resp.statusText)
+    throw new Error(`API error ${resp.status}: ${text}`)
+  }
+  return resp.json() as Promise<OcrCompareResult>
+}
+
 export async function analyzeLabel(file: File, settings?: CheckSettings | null): Promise<AnalysisResult> {
   const form = new FormData()
   form.append('file', file)

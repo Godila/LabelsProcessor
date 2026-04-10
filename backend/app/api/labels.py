@@ -61,6 +61,42 @@ async def _read_and_validate(file: UploadFile) -> tuple[bytes, str]:
     return data, mime
 
 
+@router.post("/analyze/ocr-compare")
+async def compare_ocr_providers(file: UploadFile):
+    """Run Yandex Vision and Nemotron in parallel, return both OCR results for comparison."""
+    import asyncio
+    import base64
+    from app.services.yandex_ocr import YandexOCRService
+    from app.services.nemotron_ocr import NemotronOCRService
+
+    data, mime = await _read_and_validate(file)
+    b64 = base64.b64encode(data).decode()
+
+    yandex_svc = YandexOCRService(
+        folder_id=app_settings.yandex_folder_id, token_manager=iam_manager
+    )
+
+    async def run_yandex():
+        try:
+            r = await yandex_svc.analyze(b64, mime)
+            return {"full_text": r.full_text, "lines": [{"text": l.text, "confidence": l.confidence} for l in r.lines], "avg_confidence": r.avg_confidence, "line_count": len(r.lines)}
+        except Exception as e:
+            return {"error": str(e)}
+
+    async def run_nemotron():
+        if not app_settings.nemotron_ocr_url:
+            return {"error": "NEMOTRON_OCR_URL не задан"}
+        try:
+            svc = NemotronOCRService(base_url=app_settings.nemotron_ocr_url)
+            r = await svc.analyze(b64, mime)
+            return {"full_text": r.full_text, "lines": [{"text": l.text, "confidence": l.confidence} for l in r.lines], "avg_confidence": r.avg_confidence, "line_count": len(r.lines)}
+        except Exception as e:
+            return {"error": str(e)}
+
+    yandex_res, nemotron_res = await asyncio.gather(run_yandex(), run_nemotron())
+    return {"yandex": yandex_res, "nemotron": nemotron_res}
+
+
 @router.post("/analyze", response_model=AnalysisResult)
 async def analyze_label(
     file: UploadFile,

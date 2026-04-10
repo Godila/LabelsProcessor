@@ -8,12 +8,14 @@ import { ImageViewer } from './components/ImageViewer'
 import { FieldsPanel } from './components/FieldsPanel'
 import { ViolationsBlock } from './components/ViolationsBlock'
 import { SettingsPanel } from './components/SettingsPanel'
+import { OcrCompareModal } from './components/OcrCompareModal'
 
 export default function App() {
   const { state, run, reset } = useAnalysis()
   const { settings, update: updateSettings, reset: resetSettings } = useSettings()
   const { activeField, setActiveField } = useBboxHighlight()
   const [showSettings, setShowSettings] = useState(false)
+  const [showCompare, setShowCompare] = useState(false)
 
   const { step, progress, stepLabel, result, imageUrl, error } = state
   const busy = step !== 'idle' && step !== 'done' && step !== 'error'
@@ -59,6 +61,18 @@ export default function App() {
             </button>
           )}
           <button
+            onClick={() => setShowCompare(true)}
+            disabled={busy}
+            title="Сравнить OCR провайдеры"
+            style={{
+              background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff',
+              borderRadius: 8, padding: '6px 12px', cursor: busy ? 'default' : 'pointer',
+              fontSize: 13, fontWeight: 600, opacity: busy ? 0.5 : 1,
+            }}
+          >
+            OCR сравнение
+          </button>
+          <button
             onClick={() => setShowSettings(true)}
             disabled={busy}
             title="Настройки проверки"
@@ -74,6 +88,8 @@ export default function App() {
       </div>
 
       <ProgressOverlay step={step} progress={progress} stepLabel={stepLabel} />
+
+      {showCompare && <OcrCompareModal onClose={() => setShowCompare(false)} />}
 
       {showSettings && (
         <SettingsPanel
