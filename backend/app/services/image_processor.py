@@ -65,11 +65,11 @@ def preprocess_for_ocr(image_bytes: bytes) -> bytes:
 
 # ── Level-2 preprocessing (optional, label crop) ────────────────────────────
 
-def crop_label_region(image_bytes: bytes, margin: float = 0.02) -> bytes:
+def crop_label_region(image_bytes: bytes, margin: float = 0.03) -> bytes:
     """
-    Attempt to find and crop the main label rectangle using contour detection.
-    Falls back to original if no clear rectangle found.
-    margin: extra padding around detected region (fraction of image size).
+    Find the white/light label rectangle on a product photo.
+    Strategy: threshold bright regions → find largest compact white rectangle.
+    Falls back to original if no clear label found.
     """
     try:
         img = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
@@ -77,32 +77,49 @@ def crop_label_region(image_bytes: bytes, margin: float = 0.02) -> bytes:
             return image_bytes
 
         h, w = img.shape[:2]
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-        # Edge detection
-        blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-        edges = cv2.Canny(blurred, 30, 100)
-        edges = cv2.dilate(edges, np.ones((3, 3), np.uint8), iterations=2)
+        # Convert to LAB — L channel = lightness, good for finding white labels
+        lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+        l_channel = lab[:, :, 0]
 
-        # Find largest contour
-        contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        # Threshold: keep only bright regions (labels are usually white/light)
+        _, bright_mask = cv2.threshold(l_channel, 170, 255, cv2.THRESH_BINARY)
+
+        # Morphological close to fill gaps inside label
+        kernel = np.ones((15, 15), np.uint8)
+        bright_mask = cv2.morphologyEx(bright_mask, cv2.MORPH_CLOSE, kernel)
+        bright_mask = cv2.morphologyEx(bright_mask, cv2.MORPH_OPEN, kernel)
+
+        contours, _ = cv2.findContours(bright_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         if not contours:
+            logger.info("Label crop: no bright contours found")
             return image_bytes
 
-        # Filter contours by area (at least 15% of image)
-        min_area = 0.15 * w * h
-        valid = [c for c in contours if cv2.contourArea(c) > min_area]
-        if not valid:
+        # Score contours: prefer compact (aspect ratio close to label) + large area
+        best = None
+        best_score = 0.0
+        img_area = w * h
+
+        for c in contours:
+            area = cv2.contourArea(c)
+            if area < 0.04 * img_area or area > 0.80 * img_area:
+                continue
+            x, y, bw, bh = cv2.boundingRect(c)
+            # Rectangularity: how much of bbox is filled
+            rect_fill = area / (bw * bh + 1)
+            # Aspect ratio penalty: labels are usually wider than tall (0.3–3.0)
+            aspect = bw / (bh + 1)
+            aspect_score = 1.0 if 0.3 <= aspect <= 4.0 else 0.3
+            score = rect_fill * aspect_score * (area / img_area)
+            if score > best_score:
+                best_score = score
+                best = (x, y, bw, bh)
+
+        if best is None or best_score < 0.02:
+            logger.info("Label crop: no suitable label rectangle (best_score=%.3f)", best_score)
             return image_bytes
 
-        largest = max(valid, key=cv2.contourArea)
-        x, y, bw, bh = cv2.boundingRect(largest)
-
-        # Skip if crop covers almost the full image (no point)
-        if bw * bh > 0.92 * w * h:
-            return image_bytes
-
-        # Add margin
+        x, y, bw, bh = best
         pad_x = int(w * margin)
         pad_y = int(h * margin)
         x1 = max(0, x - pad_x)
@@ -111,13 +128,13 @@ def crop_label_region(image_bytes: bytes, margin: float = 0.02) -> bytes:
         y2 = min(h, y + bh + pad_y)
 
         cropped = img[y1:y2, x1:x2]
-        success, buf = cv2.imencode(".jpg", cropped, [cv2.IMWRITE_JPEG_QUALITY, 92])
+        success, buf = cv2.imencode(".jpg", cropped, [cv2.IMWRITE_JPEG_QUALITY, 93])
         if not success:
             return image_bytes
 
         result = buf.tobytes()
-        logger.info("Label crop: %dx%d → %dx%d (%.0f%% area)",
-                    w, h, x2 - x1, y2 - y1, 100 * (x2 - x1) * (y2 - y1) / (w * h))
+        logger.info("Label crop: %dx%d → %dx%d (%.0f%% of image, score=%.3f)",
+                    w, h, x2 - x1, y2 - y1, 100 * (x2 - x1) * (y2 - y1) / img_area, best_score)
         return result
 
     except Exception as e:
