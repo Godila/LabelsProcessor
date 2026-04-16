@@ -14,7 +14,7 @@ interface StepDef {
 
 const STEPS: StepDef[] = [
   { key: 'file_prepare',   label: 'Подготовка файла',        icon: '📄' },
-  { key: 'yandex_ocr',     label: 'OCR — Yandex Vision',     icon: '🔍' },
+  { key: 'yandex_ocr',     label: 'OCR',                      icon: '🔍' },
   { key: 'gemini_analyze', label: 'AI — анализ регламентов', icon: '🤖' },
   { key: 'merge',          label: 'Формирование результата', icon: '✅' },
 ]
@@ -68,11 +68,8 @@ export function ProgressOverlay({ step, progress, stepLabel }: Props) {
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 14, color: '#333', fontWeight: active ? 600 : 400 }}>
-                  {s.label}
+                  {active && stepLabel ? stepLabel : s.label}
                 </div>
-                {active && stepLabel && stepLabel !== s.label && (
-                  <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>{stepLabel}</div>
-                )}
               </div>
               {done && (
                 <div style={{ fontSize: 12, color: '#28a745', fontWeight: 600 }}>Готово</div>
