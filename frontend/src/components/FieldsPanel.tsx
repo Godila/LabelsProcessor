@@ -70,7 +70,7 @@ export function FieldsPanel({ result, activeField, onFieldHover }: Props) {
   return (
     <div>
       <div style={{ fontSize: 13, color: '#888', marginBottom: 12 }}>
-        OCR уверенность: <strong>{pct(result.ocr.avg_confidence)}</strong>
+        {result.ocr.ocr_label || 'OCR'} уверенность: <strong>{pct(result.ocr.avg_confidence)}</strong>
         {result.confidence && (
           <> &nbsp;|&nbsp; AI уверенность: <strong>{pct(result.confidence.overall)}</strong></>
         )}

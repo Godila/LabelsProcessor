@@ -41,4 +41,4 @@ class NemotronOCRService:
         avg_conf = data.get("avg_confidence", 0.0)
 
         logger.info("Nemotron OCR: %d lines, avg_conf=%.3f", len(lines), avg_conf)
-        return OCRResult(full_text=full_text, lines=lines, avg_confidence=avg_conf)
+        return OCRResult(full_text=full_text, lines=lines, avg_confidence=avg_conf, ocr_label=self.ocr_label)

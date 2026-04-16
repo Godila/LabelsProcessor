@@ -17,6 +17,7 @@ class OCRResult(BaseModel):
     full_text: str
     lines: List[OCRLine]
     avg_confidence: float
+    ocr_label: str = "OCR"
 
 
 class NutritionInfo(BaseModel):

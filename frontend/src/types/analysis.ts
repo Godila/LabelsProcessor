@@ -13,6 +13,7 @@ export interface OCRResult {
   full_text: string
   lines: OCRLine[]
   avg_confidence: number
+  ocr_label?: string
 }
 
 export interface NutritionInfo {

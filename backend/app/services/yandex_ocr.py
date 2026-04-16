@@ -50,7 +50,7 @@ class YandexOCRService:
             )
         except (KeyError, IndexError):
             logger.warning("Yandex OCR: empty or unexpected response structure")
-            return OCRResult(full_text="", lines=[], avg_confidence=0.0)
+            return OCRResult(full_text="", lines=[], avg_confidence=0.0, ocr_label=self.ocr_label)
 
         lines_out: list[OCRLine] = []
         for block in blocks:
@@ -68,4 +68,4 @@ class YandexOCRService:
         avg_conf = round(
             sum(l.confidence for l in lines_out) / max(len(lines_out), 1), 3
         )
-        return OCRResult(full_text=full_text, lines=lines_out, avg_confidence=avg_conf)
+        return OCRResult(full_text=full_text, lines=lines_out, avg_confidence=avg_conf, ocr_label=self.ocr_label)
