@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class NemotronOCRService:
-    ocr_label = "OCR — Nemotron v2"
+    ocr_label = "OCR — JustOCR 2.0"
 
     def __init__(self, base_url: str):
         # base_url например: http://194.228.55.129:37479

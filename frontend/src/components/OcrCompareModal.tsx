@@ -118,7 +118,7 @@ export function OcrCompareModal({ onClose }: Props) {
           )}
           {mode === 'ocr' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>
-              <span style={{ fontSize: 12, color: '#666' }}>Nemotron merge:</span>
+              <span style={{ fontSize: 12, color: '#666' }}>JustOCR 2.0 merge:</span>
               {(['layout', 'word', 'sentence', 'paragraph'] as const).map(ml => (
                 <button key={ml} onClick={() => setMergeLevel(ml)} style={{
                   padding: '3px 10px', borderRadius: 6, border: 'none', cursor: 'pointer',
@@ -131,7 +131,7 @@ export function OcrCompareModal({ onClose }: Props) {
           )}
           {mode === 'pipeline' && (
             <span style={{ fontSize: 12, color: '#888', marginLeft: 'auto' }}>
-              ⚡ Запускает Yandex + Nemotron OCR → LLM параллельно (~30–60 сек)
+              ⚡ Запускает Yandex + JustOCR 2.0 → LLM параллельно (~30–60 сек)
             </span>
           )}
         </div>
@@ -140,7 +140,7 @@ export function OcrCompareModal({ onClose }: Props) {
 
         {loading && (
           <div style={{ padding: 40, textAlign: 'center', color: '#888', fontSize: 14 }}>
-            {mode === 'ocr' ? 'Параллельный запрос к Yandex Vision и Nemotron v2...' : 'Запуск полного пайплайна с обоими OCR и LLM анализом...'}
+            {mode === 'ocr' ? 'Параллельный запрос к Yandex Vision и JustOCR 2.0...' : 'Запуск полного пайплайна с обоими OCR и LLM анализом...'}
           </div>
         )}
 
@@ -148,7 +148,7 @@ export function OcrCompareModal({ onClose }: Props) {
         {mode === 'ocr' && ocrResult && (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', flex: 1, overflow: 'hidden' }}>
             <OcrCol name="Yandex Vision" color="#fc3c2e" data={ocrResult.yandex} />
-            <OcrCol name="Nemotron v2" color="#76b900" data={ocrResult.nemotron} />
+            <OcrCol name="JustOCR 2.0" color="#76b900" data={ocrResult.nemotron} />
           </div>
         )}
 
@@ -156,7 +156,7 @@ export function OcrCompareModal({ onClose }: Props) {
         {mode === 'pipeline' && pipelineResult && (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', flex: 1, overflow: 'hidden' }}>
             <PipelineCol name="Yandex Vision" color="#fc3c2e" data={pipelineResult.yandex} />
-            <PipelineCol name="Nemotron v2" color="#76b900" data={pipelineResult.nemotron} />
+            <PipelineCol name="JustOCR 2.0" color="#76b900" data={pipelineResult.nemotron} />
           </div>
         )}
       </div>

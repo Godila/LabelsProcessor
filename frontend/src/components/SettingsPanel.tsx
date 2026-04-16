@@ -115,7 +115,7 @@ export function SettingsPanel({ settings, onUpdate, onReset, onClose }: Props) {
             <div style={{ display: 'flex', gap: 10 }}>
               {([
                 { value: '', label: 'По умолчанию (сервер)' },
-                { value: 'nemotron', label: 'Nemotron v2' },
+                { value: 'nemotron', label: 'JustOCR 2.0' },
                 { value: 'yandex', label: 'Yandex Vision' },
               ] as const).map(opt => (
                 <label key={opt.value} style={{
@@ -138,7 +138,7 @@ export function SettingsPanel({ settings, onUpdate, onReset, onClose }: Props) {
               ))}
             </div>
             <div style={{ fontSize: 12, color: '#999', marginTop: 6 }}>
-              Nemotron v2 — рекомендуется (лучше для кириллицы). Yandex Vision — запасной вариант.
+              JustOCR 2.0 — рекомендуется (лучше для кириллицы). Yandex Vision — запасной вариант.
             </div>
           </Section>
 
